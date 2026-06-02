@@ -1,127 +1,103 @@
-import pygame, sys 
-from pygame.locals import QUIT
+import pygame
+import sys
 from pygame.locals import *
+
+pygame.init()
 
 clock = pygame.time.Clock()
 
-current_frame = 0
-anim_time = 0
+frame_atual = 0
+tempo_animacao = 0
+frame_corrida = 0
+tempo_corrida = 0
+frame_pulo = 0
+tempo_pulo = 0
+animando_corrida = False
+animando_pulo = False
+virado_direita = True
+x = 200
+y = 300
+velocidade = 3
 
-run_animation = False
-olhar_direita = True
-jump_animation = False
+tela = pygame.display.set_mode((800, 600))
+pygame.display.set_caption("Animações PyGame")
 
-current_frame_sp = 0
-anim_time_sp = 0
+sprites_corrida = pygame.image.load("Knight 2D Pixel Art/Sprites/without_outline/RUN.png")
+sprites_pulo = pygame.image.load("Knight 2D Pixel Art/Sprites/without_outline/JUMP.png")
 
-current_frame_jump = 0
-anim_time_jump = 0
-
-
-pygame.init()
-screen = pygame.display.set_mode((800, 600))
-pygame.display.set_caption('Hello World')
-
-run_spritesheet = pygame.image.load('Knight 2D Pixel Art/Sprites/without_outline/RUN.png')
-jump_spritesheet = pygame.image.load('Knight 2D Pixel Art/Sprites/without_outline/JUMP.png')
-
-walk_png_list = []
+imagens = []
 for i in range(8):
-    walk_png_list.append(pygame.image.load(f'PNG_sequence/walkL{i+1}.png'))
+    imagens.append(pygame.image.load(f"PNG_sequence/walkL{i+1}.png"))
 
-
-
-frame_width = 95
-jump_max_frames = jump_spritesheet.get_width() // frame_width
-run_max_frames = run_spritesheet.get_width() // frame_width
-
+largura_frame = 95
+total_frames_corrida = sprites_corrida.get_width() // largura_frame
+total_frames_pulo = sprites_pulo.get_width() // largura_frame
 
 while True:
+
     for event in pygame.event.get():
         if event.type == QUIT:
             pygame.quit()
-            sys.exit() 
+            sys.exit()
 
-    keys = pygame.key.get_pressed()
+        if event.type == KEYDOWN:
+            if event.key == K_SPACE and not animando_pulo:
+                animando_pulo = True
+                frame_pulo = 0
+                tempo_pulo = 0
 
-    if keys[pygame.K_d]:
-        run_animation = True
-        olhar_direita = True
+    teclas = pygame.key.get_pressed()
 
-    if keys[pygame.K_a]:
-        run_animation = True
-        olhar_direita = False
+    if teclas[K_d]:
+        animando_corrida = True
+        virado_direita = True
+        x += velocidade
+    elif teclas[K_a]:
+        animando_corrida = True
+        virado_direita = False
+        x -= velocidade
+    else:
+        animando_corrida = False
 
-    if keys[pygame.K_SPACE]:
-        jump_animation = True
-        current_frame_jump = 0
-
-
+    x = max(0, min(800 - 180, x))
     dt = clock.tick(60)
 
+    if animando_corrida:
+        tempo_corrida += dt
+        if tempo_corrida >= 100:
+            frame_corrida = (frame_corrida + 1) % total_frames_corrida
+            tempo_corrida = 0
+    else:
+        frame_corrida = 0
 
+    tempo_animacao += dt
+    if tempo_animacao >= 180:
+        frame_atual = (frame_atual + 1) % len(imagens)
+        tempo_animacao = 0
+    if animando_pulo:
+        tempo_pulo += dt
+        if tempo_pulo >= 80:
+            frame_pulo += 1
+            if frame_pulo >= total_frames_pulo:
+                frame_pulo = total_frames_pulo - 1
+                animando_pulo = False
+            tempo_pulo = 0
+
+    tela.fill((255, 255, 255))
+    tela.blit(imagens[frame_atual], (0, 0))
+    frame = sprites_corrida.subsurface((largura_frame * frame_corrida, 0, largura_frame, 64))
     
-    if run_animation:
-        anim_time_sp += dt
-
-        if anim_time_sp / 1000 > 0.1:
-            current_frame_sp += 1
-
-            if current_frame_sp >= run_max_frames:
-                current_frame_sp = 0
-                run_animation = False
-
-            anim_time_sp = 0
-
-
-    
-    anim_time += dt
-    if anim_time > 180:
-        current_frame += 1
-        if current_frame > len(walk_png_list) - 1:
-            current_frame = 0
-        anim_time = 0
-
-
-    
-    if jump_animation:
-        anim_time_jump += dt
-
-        if anim_time_jump / 1000 > 0.08:
-            current_frame_jump += 1
-
-            if current_frame_jump >= jump_max_frames:
-                current_frame_jump = jump_max_frames - 1
-                jump_animation = False
-
-            anim_time_jump = 0
-
-
-    screen.fill((255,255,255))
-
-    screen.blit(walk_png_list[current_frame], (0, 0))
-
-
-   
-    frame = run_spritesheet.subsurface(
-        (frame_width * current_frame_sp, 0, frame_width, 64)
-    )
-
-    if not olhar_direita:
+    if not virado_direita:
         frame = pygame.transform.flip(frame, True, False)
-
     frame = pygame.transform.scale(frame, (180, 240))
 
-
-    
-    if jump_animation:
-        frame2 = jump_spritesheet.subsurface((frame_width * current_frame_jump, 0, frame_width, 64))
-        if not olhar_direita:
-            frame2 = pygame.transform.flip(frame2, True, False)
-        frame2 = pygame.transform.scale(frame2, (180, 240))
-        screen.blit(frame2, (200, 200))
+    if animando_pulo:
+        frame_pulo_img = sprites_pulo.subsurface((largura_frame * frame_pulo, 0, largura_frame, 64))
+        if not virado_direita:
+            frame_pulo_img = pygame.transform.flip(frame_pulo_img, True, False)
+        frame_pulo_img = pygame.transform.scale(frame_pulo_img, (180, 240))
+        tela.blit(frame_pulo_img, (x, y))
     else:
-        screen.blit(frame, (200, 200))
-
+        tela.blit(frame, (x, y))
 
     pygame.display.update()
